@@ -31,11 +31,12 @@ import java.util.Map;
 
 import im.mobile.IMClientManager;
 import im.mobile.callback.Callback;
+import im.mobile.callback.IMListener;
 import im.mobile.callback.IMessageListener;
 import im.mobile.model.IMessage;
 import im.mobile.model.TxtMessage;
 
-public class ChatActivity extends Activity implements IMessageListener {
+public class ChatActivity extends Activity implements IMessageListener, IMListener {
     private final static String TAG = ChatActivity.class.getSimpleName();
     private ListView listView;
     private ChatAdapter adapter;
@@ -56,14 +57,17 @@ public class ChatActivity extends Activity implements IMessageListener {
     @Override
     public void onStart() {
         super.onStart();
-        IMClientManager.getInstance(getApplicationContext()).registIMessageListener(this);
+        IMClientManager.getInstance().registIMessageListener(this);
+        IMClientManager.getInstance().registIMListener(this);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        IMClientManager.getInstance(getApplicationContext()).unRegistIMessageListener(this);
+        IMClientManager.getInstance().unRegistIMessageListener(this);
+        IMClientManager.getInstance().unRegistIMListener(this);
     }
+
 
     private void initViews() {
         findViewById(R.id.back).setOnClickListener(new OnClickListener() {
@@ -79,14 +83,28 @@ public class ChatActivity extends Activity implements IMessageListener {
         updateAdapter();
         listView.setAdapter(adapter);
         listView.setSelection(adapter.getCount());
-        title.setText("和" + username + "聊天中");
-
+        refreshConnectState();
         findViewById(R.id.send).setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 doSendTxtMessage();
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshConnectState();
+    }
+
+    public void refreshConnectState() {
+        boolean connectedToServer = IMClientManager.getInstance().isConnectedToServer();
+        String titleStr = "和" + username + "聊天中";
+        if (connectedToServer) {
+            titleStr = "和" + username + "聊天中  (连接断开)";
+        }
+        title.setText(titleStr);
     }
 
     private void doSendTxtMessage() {
@@ -144,5 +162,15 @@ public class ChatActivity extends Activity implements IMessageListener {
 
             }
         });
+    }
+
+    @Override
+    public void onLogin(int code, String msg) {
+
+    }
+
+    @Override
+    public void onLinkCloseMessage(int code, String msg) {
+        refreshConnectState();
     }
 }
