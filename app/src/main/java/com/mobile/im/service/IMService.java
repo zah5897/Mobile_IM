@@ -25,7 +25,7 @@ public class IMService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         IMClientManager.getInstance(getApplicationContext()).initMobileIMSDK();
-        IMClientManager.getInstance(getApplicationContext()).reLogin(new Callback() {
+        IMClientManager.getInstance(getApplicationContext()).localLogin(new Callback() {
             @Override
             public void onBack(int code, Object msg) {
                 if (code == 0) {

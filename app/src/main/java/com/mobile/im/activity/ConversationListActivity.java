@@ -55,6 +55,7 @@ public class ConversationListActivity extends Activity implements ConversationLi
             @Override
             public void onClick(View view) {
                 final EditText input = new EditText(ConversationListActivity.this);
+                input.setText("test");
                 AlertDialog.Builder dialog = new AlertDialog.Builder(ConversationListActivity.this).setTitle("新建聊天").setNegativeButton("取消", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -96,8 +97,10 @@ public class ConversationListActivity extends Activity implements ConversationLi
 
     public void refreshConnectState() {
         boolean connectedToServer = IMClientManager.getInstance().isConnectedToServer();
-        String titleStr = "会话列表";
+        String titleStr = null;
         if (connectedToServer) {
+            titleStr = "会话列表";
+        } else {
             titleStr = "会话列表 (连接断开)";
         }
         title.setText(titleStr);

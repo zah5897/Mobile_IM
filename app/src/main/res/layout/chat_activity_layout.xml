@@ -33,48 +33,125 @@
             android:textColor="@color/white" />
     </RelativeLayout>
 
-
-    <ListView
-        android:id="@+id/listview"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/bottom"
-        android:layout_below="@+id/top"
-        android:background="@color/white"
-        android:cacheColorHint="@android:color/transparent"
-        android:divider="@null"
-        android:dividerHeight="0dp"
-        android:listSelector="@android:color/transparent"
-        android:transcriptMode="normal"></ListView>
+        android:layout_below="@+id/top">
+
+        <ListView
+            android:id="@+id/listview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/white"
+            android:cacheColorHint="@android:color/transparent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:listSelector="@android:color/transparent"
+            android:transcriptMode="normal"></ListView>
+
+        <com.mobile.im.view.VoiceRecorderView
+            android:id="@+id/voice_recorder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:visibility="invisible" />
+    </RelativeLayout>
+
 
     <RelativeLayout
         android:id="@+id/bottom"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:padding="5dp">
 
-        <EditText
-            android:id="@+id/input"
+        <RelativeLayout
+            android:id="@+id/input_panel"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_centerVertical="true"
-            android:layout_toLeftOf="@+id/send"
-            android:background="@drawable/edittext_bg"
-            android:paddingLeft="5dp"
-            android:paddingTop="2dp"
-            android:paddingRight="5dp"
-            android:paddingBottom="2dp" />
+            android:layout_height="50dp"
+            android:padding="5dp">
 
-        <Button
-            android:id="@+id/send"
+            <ImageView
+                android:id="@+id/type_voice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_margin="5dp"
+                android:src="@drawable/voide_btn_selector" />
+
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_toLeftOf="@+id/send"
+                android:layout_toRightOf="@+id/type_voice">
+
+                <EditText
+                    android:id="@+id/input"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_centerVertical="true"
+                    android:background="@drawable/edittext_bg"
+                    android:hint="输入文字"
+                    android:paddingLeft="5dp"
+                    android:paddingTop="2dp"
+                    android:paddingRight="5dp"
+                    android:paddingBottom="2dp"
+                    android:textSize="14sp"
+                    android:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/make_voice"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/round_rect_selector"
+                    android:gravity="center"
+                    android:paddingLeft="5dp"
+                    android:paddingTop="2dp"
+                    android:paddingRight="5dp"
+                    android:paddingBottom="2dp"
+                    android:text="按住录制语音消息"
+                    android:visibility="gone" />
+            </RelativeLayout>
+
+
+            <Button
+                android:id="@+id/send"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="5dp"
+                android:layout_toLeftOf="@+id/type_select"
+                android:background="@drawable/button_green_selector"
+                android:text="发 送"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+
+            <ImageView
+                android:id="@+id/type_select"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:layout_margin="5dp"
+                android:src="@drawable/type_selector" />
+        </RelativeLayout>
+
+        <LinearLayout
+            android:id="@+id/select_panel"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
-            android:background="@drawable/button_green_selector"
-            android:text="发 送"
-            android:textColor="@color/white"
-            android:textSize="12sp" />
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/input_panel"
+            android:padding="10dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/send_img"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/chat_image_selector" />
+        </LinearLayout>
     </RelativeLayout>
+
+
 </RelativeLayout>

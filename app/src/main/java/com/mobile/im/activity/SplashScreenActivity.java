@@ -16,8 +16,10 @@
 package com.mobile.im.activity;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -26,6 +28,7 @@ import android.view.Window;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
+import android.widget.Toast;
 
 import com.mobile.im.R;
 import com.mobile.im.service.IMService;
@@ -114,8 +117,39 @@ public class SplashScreenActivity extends Activity implements IMListener {
     }
 
     @Override
-    public void onLogin(int code, String msg) {
-        redirectToConversation();
+    public void onLogin(final int code, String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (code == 0) {
+                    redirectToConversation();
+                } else if (code == 7) {
+                    new AlertDialog.Builder(SplashScreenActivity.this).setMessage("密码错误，重新登录？").setNegativeButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            IMClientManager.getInstance(getApplicationContext()).clearLoginCache();
+                            redirectToLogin();
+                        }
+                    }).show();
+                } else if (code == -2) {
+                    new AlertDialog.Builder(SplashScreenActivity.this).setMessage("登录超时").setNegativeButton("重试", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            startService(new Intent(getApplicationContext(), IMService.class));
+                        }
+                    }).show();
+                } else {
+                    new AlertDialog.Builder(SplashScreenActivity.this).setMessage("服务器连接异常，code=" + code).setNegativeButton("关闭", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    }).show();
+                }
+            }
+        });
+
+
     }
 
     @Override

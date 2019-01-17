@@ -59,7 +59,16 @@ public class ConversationAdapter extends BaseAdapter {
         }
         Conversation conversation = getItem(i);
         IMessage msg = conversation.lastMsg;
-        String content = msg.from + " : " + msg.content;
+
+
+        String content="";
+        if(msg.type==IMessage.IMessageType.TXT){
+            content= msg.from + " : " + msg.content;
+        }else if(msg.type==IMessage.IMessageType.IMG){
+            content= msg.from + " : [图片消息]";
+        }else if(msg.type==IMessage.IMessageType.AUDIO){
+            content= msg.from + " : [语音消息]";
+        }
         viewHolder.msg_contet.setText(content);
         int unreadCount = conversation.getUnReadCount();
 
