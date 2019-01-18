@@ -28,7 +28,7 @@
             android:paddingLeft="20dp"
             android:paddingRight="20dp"
             android:src="@mipmap/setting"
-            android:visibility="gone" />
+            android:visibility="visible" />
     </RelativeLayout>
 
     <Button

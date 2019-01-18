@@ -12,24 +12,28 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.mobile.im.R;
 import com.mobile.im.adapter.ChatAdapter;
 import com.mobile.im.utils.GalleryUriUtils;
 import com.mobile.im.view.VoiceRecorderView;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import im.mobile.IMClientManager;
+import im.mobile.MsgManager;
 import im.mobile.callback.Callback;
-import im.mobile.callback.IMListener;
-import im.mobile.callback.IMessageListener;
+import im.mobile.event.IMessageBeReceiveEvent;
+import im.mobile.event.IMessageDownloadSuccessEvent;
 import im.mobile.model.IMessage;
 import im.mobile.model.ImgMessage;
 import im.mobile.model.TxtMessage;
 import im.mobile.model.VoiceMessage;
 import pub.devrel.easypermissions.EasyPermissions;
 
-public class ChatActivity extends Activity implements IMessageListener, IMListener {
+public class ChatActivity extends Activity {
     private final static String TAG = ChatActivity.class.getSimpleName();
     private ListView listView;
     private ChatAdapter adapter;
@@ -50,22 +54,19 @@ public class ChatActivity extends Activity implements IMessageListener, IMListen
         this.setContentView(R.layout.chat_activity_layout);
         username = getIntent().getStringExtra("username");
         initViews();
-        IMClientManager.getInstance(getApplicationContext()).registIMessageListener(this);
-        IMClientManager.getInstance(getApplicationContext()).loadHistoryMsg(username, null);
+//        IMClientManager.getInstance().loadHistoryMsg(username, null);
     }
 
     @Override
     public void onStart() {
         super.onStart();
-        IMClientManager.getInstance().registIMessageListener(this);
-        IMClientManager.getInstance().registIMListener(this);
+        EventBus.getDefault().register(this);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        IMClientManager.getInstance().unRegistIMessageListener(this);
-        IMClientManager.getInstance().unRegistIMListener(this);
+        EventBus.getDefault().unregister(this);
     }
 
 
@@ -207,53 +208,26 @@ public class ChatActivity extends Activity implements IMessageListener, IMListen
         listView.smoothScrollToPosition(adapter.getCount());
     }
 
-
     private void updateAdapter() {
         if (adapter == null) {
-            adapter = new ChatAdapter(this, IMClientManager.getInstance(getApplicationContext()).getDbHelper().loadMessages(username));
+            adapter = new ChatAdapter(this, MsgManager.getManager().loadMessages(username));
         } else {
-            adapter.replaceData(IMClientManager.getInstance().getDbHelper().loadMessages(username));
+            adapter.replaceData(MsgManager.getManager().loadMessages(username));
         }
-
     }
 
-    @Override
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onReceive(IMessage msg) {
         adapter.addItem(msg);
     }
 
-    @Override
-    public void onMsgBeReceived(String theFingerPrint) {
-        adapter.updateMsgBeReceived(theFingerPrint);
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMsgBeReceived(IMessageBeReceiveEvent event) {
+        adapter.updateMsgBeReceived(event.fingerPrint);
     }
 
-    @Override
-    public void onOfflineMsgLoad() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-
-            }
-        });
-    }
-
-    @Override
-    public void onMsgDownloadSuccess(final String fingerPrint) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                adapter.msgDownloadSuccess(fingerPrint);
-            }
-        });
-    }
-
-    @Override
-    public void onLogin(int code, String msg) {
-
-    }
-
-    @Override
-    public void onLinkCloseMessage(int code, String msg) {
-        refreshConnectState();
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMsgDownloadSuccess(IMessageDownloadSuccessEvent event) {
+        adapter.msgDownloadSuccess(event.fingerPrint);
     }
 }

@@ -16,9 +16,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mobile.im.R;
-import com.mobile.im.utils.CommUtils;
 import com.mobile.im.utils.VoicePlayer;
 import com.mobile.im.utils.VoiceRecorder;
+
+import im.mobile.utils.CommUtils;
 
 /**
  * Voice recorder view

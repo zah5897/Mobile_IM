@@ -16,13 +16,18 @@ import android.widget.Toast;
 import com.mobile.im.R;
 import com.mobile.im.adapter.ConversationAdapter;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import im.mobile.IMClientManager;
-import im.mobile.callback.ConversationListener;
-import im.mobile.callback.IMListener;
+import im.mobile.MsgManager;
+import im.mobile.event.ConversationRefreshEvent;
+import im.mobile.event.LoginEvent;
 import im.mobile.model.Conversation;
 
 
-public class ConversationListActivity extends Activity implements ConversationListener, IMListener {
+public class ConversationListActivity extends Activity {
     /**
      * Called when the activity is first created.
      */
@@ -55,7 +60,6 @@ public class ConversationListActivity extends Activity implements ConversationLi
             @Override
             public void onClick(View view) {
                 final EditText input = new EditText(ConversationListActivity.this);
-                input.setText("test");
                 AlertDialog.Builder dialog = new AlertDialog.Builder(ConversationListActivity.this).setTitle("新建聊天").setNegativeButton("取消", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -79,6 +83,12 @@ public class ConversationListActivity extends Activity implements ConversationLi
                 dialog.setView(input).show();
             }
         });
+        findViewById(R.id.setting).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(getApplicationContext(), SettingActivity.class));
+            }
+        });
     }
 
     @Override
@@ -87,11 +97,23 @@ public class ConversationListActivity extends Activity implements ConversationLi
         refreshConnectState();
     }
 
+    @Override
+    public void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
+    }
+
     private void refreshAdapter() {
         if (adapter == null) {
-            adapter = new ConversationAdapter(getBaseContext(), IMClientManager.getInstance(getApplicationContext()).getDbHelper().loadConversations());
+            adapter = new ConversationAdapter(getBaseContext(), MsgManager.getManager().loadConversations());
         } else {
-            adapter.updateData(IMClientManager.getInstance(getApplicationContext()).getDbHelper().loadConversations());
+            adapter.updateData(MsgManager.getManager().loadConversations());
         }
     }
 
@@ -106,37 +128,15 @@ public class ConversationListActivity extends Activity implements ConversationLi
         title.setText(titleStr);
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        IMClientManager.getInstance(getApplicationContext()).registIMListener(this);
-        IMClientManager.getInstance(getApplicationContext()).registConversationListener(this);
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onConversationRefreshEvent(ConversationRefreshEvent event) {
+        refreshAdapter();
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        IMClientManager.getInstance(getApplicationContext()).unRegistIMListener(this);
-        IMClientManager.getInstance(getApplicationContext()).unRegistConversationListener(this);
-    }
-
-    @Override
-    public void onChange() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                refreshAdapter();
-            }
-        });
-    }
-
-    @Override
-    public void onLogin(int code, String msg) {
-
-    }
-
-    @Override
-    public void onLinkCloseMessage(int code, String msg) {
-        refreshConnectState();
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onLogin(LoginEvent event) {
+        if (event.type == LoginEvent.TYPE_LIKE_CLOSE) {
+            refreshConnectState();
+        }
     }
 }
