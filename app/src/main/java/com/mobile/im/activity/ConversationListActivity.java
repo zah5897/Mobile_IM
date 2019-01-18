@@ -45,6 +45,7 @@ public class ConversationListActivity extends Activity {
         refreshAdapter();
         listView.setAdapter(adapter);
         refreshConnectState();
+        listView.setEmptyView(findViewById(R.id.no_data_txt));
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -94,7 +95,15 @@ public class ConversationListActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        IMClientManager.getInstance().pushActivity(this);
         refreshConnectState();
+        refreshAdapter();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        IMClientManager.getInstance().popActivity(this);
     }
 
     @Override

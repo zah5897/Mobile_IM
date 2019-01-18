@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -12,6 +13,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.mobile.im.R;
 import com.mobile.im.adapter.ChatAdapter;
@@ -55,6 +57,24 @@ public class ChatActivity extends Activity {
         username = getIntent().getStringExtra("username");
         initViews();
 //        IMClientManager.getInstance().loadHistoryMsg(username, null);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        String newUsername = getIntent().getStringExtra("username");
+        if (TextUtils.isEmpty(newUsername)) {
+            Toast.makeText(getApplicationContext(), "当前聊天用户为空", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        if (newUsername.equals(username)) {
+            updateAdapter();
+        } else {
+            username = newUsername;
+            refreshConnectState();
+            updateAdapter();
+        }
     }
 
     @Override
@@ -163,7 +183,14 @@ public class ChatActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        IMClientManager.getInstance().pushActivity(this);
         refreshConnectState();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        IMClientManager.getInstance().popActivity(this);
     }
 
     public void refreshConnectState() {

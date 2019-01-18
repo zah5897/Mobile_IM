@@ -36,6 +36,7 @@
         <activity
             android:name="com.mobile.im.activity.ConversationListActivity"
             android:configChanges="keyboardHidden|orientation"
+            android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme"
             android:windowSoftInputMode="adjustUnspecified|stateHidden"></activity>
@@ -57,6 +58,7 @@
         <activity
             android:name="com.mobile.im.activity.ChatActivity"
             android:configChanges="keyboardHidden|orientation"
+            android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize"></activity>
