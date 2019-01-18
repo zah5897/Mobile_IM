@@ -57,6 +57,7 @@ public class ClientCoreSDK {
     private Context context = null;
 
     private long serverTime;
+
     public static ClientCoreSDK getInstance() {
         if (instance == null)
             instance = new ClientCoreSDK();
@@ -92,6 +93,11 @@ public class ClientCoreSDK {
     }
 
     public void release() {
+
+        currentLoginUsername = null;
+        currentLoginToken = null;
+        currentLoginExtra = null;
+
         LocalUDPSocketProvider.getInstance().closeLocalUDPSocket();
         AutoReLoginDaemon.getInstance(context).stop(); // 2014-11-08 add by Jack Jiang
         QoS4SendDaemon.getInstance(context).stop();

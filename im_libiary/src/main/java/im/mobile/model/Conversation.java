@@ -1,6 +1,7 @@
 package im.mobile.model;
 
 import im.mobile.IMClientManager;
+import im.mobile.MsgManager;
 
 public class Conversation {
     public String friendUsername;
@@ -9,10 +10,10 @@ public class Conversation {
     public IMessage lastMsg;
 
     public int getUnReadCount() {
-        return IMClientManager.getInstance().getDbHelper().getUnReadCount(friendUsername);
+        return MsgManager.getManager().getUnReadCount(friendUsername);
     }
 
     public void updateRead() {
-        IMClientManager.getInstance().getDbHelper().updateRead(friendUsername);
+        MsgManager.getManager().updateRead(friendUsername);
     }
 }

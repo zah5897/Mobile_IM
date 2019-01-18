@@ -59,6 +59,12 @@ public class LocalUDPDataSender {
         return code;
     }
 
+    int sendEcho(String from) {
+        byte[] b = ProtocalFactory.createEchoData("echo", from, true, Protocal.genFingerPrint()).toBytes();
+        int code = send(b, b.length);
+        return code;
+    }
+
     public int sendLoginout() {
         int code = ErrorCode.COMMON_CODE_OK;
         if (ClientCoreSDK.getInstance().isLoginHasInit()) {
@@ -212,6 +218,36 @@ public class LocalUDPDataSender {
                 Log.d(TAG, "【IMCORE】数据发送失败, 错误码是：" + code + "！");
             }
 
+            fireAfterSendLogin(code);
+        }
+
+        protected void fireAfterSendLogin(int code) {
+            // default do nothing
+        }
+    }
+
+    @SuppressLint("NewApi")
+    public static abstract class SendEchoDataAsync extends AsyncTask<Object, Integer, Integer> {
+        protected Context context = null;
+        protected String loginUserId = null;
+        protected String loginToken = null;
+        protected String extra = null;
+
+
+        public SendEchoDataAsync(Context context
+                , String loginUserId) {
+            this.context = context;
+            this.loginUserId = loginUserId;
+        }
+
+        @Override
+        protected Integer doInBackground(Object... params) {
+            int code = LocalUDPDataSender.getInstance(context).sendEcho(loginUserId);
+            return code;
+        }
+
+        @Override
+        protected void onPostExecute(Integer code) {
             fireAfterSendLogin(code);
         }
 

@@ -9,13 +9,21 @@ import android.text.TextUtils;
 
 import net.openmob.mobileimsdk.android.ClientCoreSDK;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import im.mobile.IMClientManager;
+import im.mobile.MsgManager;
+import im.mobile.http.HttpUtil;
 import im.mobile.model.Conversation;
 import im.mobile.model.IMessage;
+import im.mobile.model.ImgMessage;
+import im.mobile.model.TxtMessage;
+import im.mobile.model.VoiceMessage;
 
 
 public class DBHelper extends SQLiteOpenHelper {
@@ -38,6 +46,7 @@ public class DBHelper extends SQLiteOpenHelper {
         contentValues.put("server_time", msg.serverTime);
         contentValues.put("read_state", msg.readState);
         contentValues.put("state", msg.state.ordinal());
+        contentValues.put("localPath", msg.localPath);
         return contentValues;
     }
 
@@ -52,11 +61,11 @@ public class DBHelper extends SQLiteOpenHelper {
     }
 
     private static String getMsgTableName() {
-        return ClientCoreSDK.getInstance().getCurrentLoginUsername() + MSG_TABLE_NAME;
+        return "table_" + ClientCoreSDK.getInstance().getCurrentLoginUsername() + MSG_TABLE_NAME;
     }
 
     private static String getConversationTableName() {
-        return ClientCoreSDK.getInstance().getCurrentLoginUsername() + CONVERSATION_TABLE_NAME;
+        return "table_" + ClientCoreSDK.getInstance().getCurrentLoginUsername() + CONVERSATION_TABLE_NAME;
     }
 
     public void saveMsg(IMessage msg) {
@@ -78,9 +87,6 @@ public class DBHelper extends SQLiteOpenHelper {
         for (IMessage message : msgs) {
             db.insert(getMsgTableName(), null, msgToContentValues(message));
         }
-        //这里存在消息插入，需要更新当前聊天列表
-        IMClientManager.getInstance().doNotifyOfflineLoad();
-
         IMessage last = msgs.get(msgs.size() - 1);
         last = getLatestMsg(last.from);
         saveConversation(last.from, "", last.fingerPrint, last.serverTime);
@@ -113,11 +119,28 @@ public class DBHelper extends SQLiteOpenHelper {
 
 
     private IMessage cursorToMsg(Cursor c) {
-        IMessage msg = new IMessage();
+
+        IMessage.IMessageType type = IMessage.IMessageType.values()[c.getInt(c.getColumnIndex("type"))];
+        String to = c.getString(c.getColumnIndex("_to"));
+        String content = c.getString(c.getColumnIndex("content"));
+        String localPath = c.getString(c.getColumnIndex("localPath"));
+        IMessage msg = null;
+        switch (type) {
+            case TXT:
+                msg = new TxtMessage(to, content);
+                break;
+            case IMG:
+                msg = new ImgMessage(to, localPath);
+                msg.content = content;
+                msg.praseContent();
+                break;
+            case AUDIO:
+                msg = new VoiceMessage(to, localPath, 0);
+                msg.content = content;
+                msg.praseContent();
+                break;
+        }
         msg.from = c.getString(c.getColumnIndex("_from"));
-        msg.to = c.getString(c.getColumnIndex("_to"));
-        msg.content = c.getString(c.getColumnIndex("content"));
-        msg.type = IMessage.IMessageType.values()[c.getInt(c.getColumnIndex("type"))];
         msg.fingerPrint = c.getString(c.getColumnIndex("finger_print"));
         msg.state = IMessage.IMessageState.values()[c.getInt(c.getColumnIndex("state"))];
         long time = Long.parseLong(c.getString(c.getColumnIndex("server_time")));
@@ -161,6 +184,25 @@ public class DBHelper extends SQLiteOpenHelper {
         getWritableDatabase().update(tableName, contentValues, "finger_print=?", new String[]{theFingerPrint});
         updateConversation(theFingerPrint, serverTime);
     }
+
+    public void updateFileMsgState(String theFingerPrint, String content, long serverTime, int state) {
+        String tableName = getMsgTableName();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put("state", state);
+        contentValues.put("content", content);
+        contentValues.put("server_time", serverTime);
+        getWritableDatabase().update(tableName, contentValues, "finger_print=?", new String[]{theFingerPrint});
+        updateConversation(theFingerPrint, serverTime);
+    }
+
+    public void updateVoiceLocalPath(String finger_print, String localPath, int state) {
+        ContentValues contentValues = new ContentValues();
+        contentValues.put("localPath", localPath);
+        contentValues.put("state", state);
+        getWritableDatabase().update(getMsgTableName(), contentValues, "finger_print=?", new String[]{finger_print});
+        MsgManager.getManager().notifyMsgDownloadSuccess(finger_print);
+    }
+
 
     public int getUnReadCount(String friendUsername) {
         String tableName = getMsgTableName();
@@ -212,12 +254,12 @@ public class DBHelper extends SQLiteOpenHelper {
                 contentValues.put("last_finger_print", last_finger_print);
                 contentValues.put("last_time", lastTime);
                 getWritableDatabase().update(table, contentValues, "friendUsername=?", new String[]{friendUsername});
-                IMClientManager.getInstance().doNotifyConversationRefresh();
+                MsgManager.getManager().notifyConversationRefresh();
                 return;
             }
         }
         getWritableDatabase().insert(table, null, createConversationContentValue(friendUsername, preTxt, last_finger_print, lastTime));
-        IMClientManager.getInstance().doNotifyConversationRefresh();
+        MsgManager.getManager().notifyConversationRefresh();
     }
 
     private void updateConversation(String theFingerPrint, long serverTime) {
@@ -225,7 +267,7 @@ public class DBHelper extends SQLiteOpenHelper {
         ContentValues c = new ContentValues();
         c.put("last_time", serverTime);
         getWritableDatabase().update(tableName, c, "last_finger_print=?", new String[]{theFingerPrint});
-        IMClientManager.getInstance().doNotifyConversationRefresh();
+        MsgManager.getManager().notifyConversationRefresh();
     }
 
 
@@ -238,6 +280,7 @@ public class DBHelper extends SQLiteOpenHelper {
                 " _from text," +
                 " _to text," +
                 " content text," +
+                " localPath text," +
                 " finger_print text," +
                 " type integer," +
                 " state integer," +

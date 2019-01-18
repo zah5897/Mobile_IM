@@ -77,7 +77,6 @@ public class LocalUDPDataReciever {
 
     public void startup() {
         stop();
-
         try {
             thread = new Thread(new Runnable() {
                 public void run() {
@@ -156,6 +155,7 @@ public class LocalUDPDataReciever {
                     }
                 }
 
+                Log.d(TAG, "pFromServer.getType()=" + pFromServer.getType());
                 switch (pFromServer.getType()) {
                     case ProtocalType.C.FROM_CLIENT_TYPE_OF_COMMON$DATA: {
                         if (ClientCoreSDK.getInstance().getChatTransDataEvent() != null) {

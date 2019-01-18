@@ -1,11 +1,8 @@
 package im.mobile;
 
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -18,45 +15,42 @@ import net.openmob.mobileimsdk.android.event.ChatTransDataEvent;
 import net.openmob.mobileimsdk.android.event.MessageQoSEvent;
 import net.openmob.mobileimsdk.server.protocal.Protocal;
 
+import org.greenrobot.eventbus.EventBus;
+
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import im.mobile.callback.Callback;
-import im.mobile.callback.ConversationListener;
-import im.mobile.callback.IMListener;
-import im.mobile.callback.IMessageListener;
 import im.mobile.db.DBHelper;
+import im.mobile.event.LoginEvent;
 import im.mobile.http.HttpUtil;
 import im.mobile.model.IMessage;
-import im.mobile.model.TxtMessage;
+import im.mobile.utils.AppNotifier;
+import im.mobile.utils.CommUtils;
 
 
 public class IMClientManager {
     private static String TAG = IMClientManager.class.getSimpleName();
-    private static final String IP = "192.168.50.15";
+    private static final String IP = "180.150.184.207";
     private static final int PORT = 8091;
     private static IMClientManager instance = null;
-
     /**
      * MobileIMSDK是否已被初始化. true表示已初化完成，否则未初始化.
      */
     private boolean init = false;
-
-
     private Context context;
-    private List<IMListener> imListeners;
-    private List<IMessageListener> iMessageListeners;
-    private List<ConversationListener> conversationListeners;
+    private Timer timer;
 
-    private DBHelper dbHelper;
-    private SharedPreferences spf;
+    private boolean isLogined;
 
     private IMClientManager(Context context) {
         this.context = context;
-        imListeners = new ArrayList<>();
-        iMessageListeners = new ArrayList<>();
-        conversationListeners = new ArrayList<>();
+    }
+
+    public boolean isLogined() {
+        return isLogined;
     }
 
     public static IMClientManager getInstance(Context context) {
@@ -66,81 +60,25 @@ public class IMClientManager {
         return instance;
     }
 
+    private List<Activity> activityList = new ArrayList<Activity>();
 
-    public void registIMListener(IMListener imListener) {
-        if (imListener != null && !imListeners.contains(imListener)) {
-            imListeners.add(imListener);
+    public void pushActivity(Activity activity) {
+        if (!activityList.contains(activity)) {
+            activityList.add(0, activity);
         }
     }
 
-    public void unRegistIMListener(IMListener imListener) {
-        if (imListener != null && imListeners.contains(imListener)) {
-            imListeners.remove(imListener);
-        }
+    public void popActivity(Activity activity) {
+        activityList.remove(activity);
     }
 
-
-    public void registIMessageListener(IMessageListener imListener) {
-        if (imListener != null && !iMessageListeners.contains(imListener)) {
-            iMessageListeners.add(imListener);
-        }
+    public boolean hasForegroundActivies() {
+        return activityList.size() != 0;
     }
 
-    public void unRegistIMessageListener(IMessageListener imListener) {
-        if (imListener != null && iMessageListeners.contains(imListener)) {
-            iMessageListeners.remove(imListener);
-        }
-    }
-
-
-    public void registConversationListener(ConversationListener listener) {
-        if (listener != null && !conversationListeners.contains(listener)) {
-            conversationListeners.add(listener);
-        }
-    }
-
-    public void unRegistConversationListener(ConversationListener listener) {
-        if (listener != null && conversationListeners.contains(listener)) {
-            iMessageListeners.remove(listener);
-        }
-    }
-
-
-    public List<IMessageListener> getIMessageListeners() {
-        List<IMessageListener> listeners = new ArrayList<>();
-        listeners.addAll(iMessageListeners);
-        return listeners;
-    }
-
-
-    public void doNotifyConversationRefresh() {
-        List<ConversationListener> listeners = new ArrayList<>();
-        listeners.addAll(conversationListeners);
-        for (ConversationListener listener : listeners) {
-            listener.onChange();
-        }
-    }
-
-
-    public void doNotifyOfflineLoad() {
-        List<IMessageListener> listeners = getIMessageListeners();
-        for (IMessageListener listener : listeners) {
-            listener.onOfflineMsgLoad();
-        }
-    }
 
     public static IMClientManager getInstance() {
         return instance;
-    }
-
-    private void initLocalRes() {
-        dbHelper = new DBHelper(context);
-        dbHelper.init();
-    }
-
-    //获取离校消息
-    public void startLoadOfflineMsgs() {
-        HttpUtil.getOfflineMsgs(getCurrentLoginUsername(), "", 20);
     }
 
     public void initMobileIMSDK() {
@@ -156,58 +94,34 @@ public class IMClientManager {
 
             // 【特别注意】请确保首先进行核心库的初始化（这是不同于iOS和Java端的地方)
             ClientCoreSDK.getInstance().init(context);
-            spf = context.getSharedPreferences("_im_l_cache", Context.MODE_PRIVATE);
             // 设置事件回调
             ClientCoreSDK.getInstance().setChatBaseEvent(new ChatBaseEvent() {
                 @Override
                 public void onLoginMessage(int dwErrorCode) {
                     Log.d(TAG, "onLoginMessage:code=" + dwErrorCode);
                     if (dwErrorCode == 0) {
+                        isLogined = true;
                         cacheLoginInfo();
                         //开始获取离线消息
-                        startLoadOfflineMsgs();
+                        MsgManager.getManager().startLoadOfflineMsgs();
                     }
                     //通知回调
-                    for (IMListener listener : imListeners) {
-                        if (dwErrorCode == 0) {
-                            listener.onLogin(dwErrorCode, "IM服务器登录/重连成功");
-
-                        } else {
-                            listener.onLogin(dwErrorCode, "IM服务器登录/连接失败");
-                        }
+                    if (timer != null) {
+                        timer.cancel();
                     }
+                    EventBus.getDefault().post(new LoginEvent(LoginEvent.TYPE_LOGIN, dwErrorCode, dwErrorCode == 0 ? "IM服务器登录/重连成功" : "IM服务器登录/连接失败"));
                 }
 
                 @Override
                 public void onLinkCloseMessage(int dwErrorCode) {
                     Log.e(TAG, "【DEBUG_UI】与IM服务器的网络连接出错关闭了，error：" + dwErrorCode);
-                    for (IMListener listener : imListeners) {
-                        listener.onLinkCloseMessage(dwErrorCode, "与IM服务器的连接已断开, 自动登陆/重连将启动!");
-                    }
+                    EventBus.getDefault().post(new LoginEvent(LoginEvent.TYPE_LIKE_CLOSE, dwErrorCode, "与IM服务器的连接已断开, 自动登陆/重连将启动!"));
                 }
             });
             ClientCoreSDK.getInstance().setChatTransDataEvent(new ChatTransDataEvent() {
                 @Override
                 public void onTransBuffer(String fingerPrintOfProtocal, String userid, String dataContent, int typeu, long serverTime) {
-                    Log.d(TAG, "【DEBUG_UI】[typeu=" + typeu + "]收到来自用户" + userid + "的消息:" + dataContent);
-
-                    List<IMessageListener> listeners = getIMessageListeners();
-
-                    IMessage msg = new IMessage();
-                    msg.type = IMessage.IMessageType.values()[typeu];
-                    msg.content = dataContent;
-                    msg.from = userid;
-                    msg.to = getCurrentLoginUsername();
-                    msg.fingerPrint = fingerPrintOfProtocal;
-                    msg.serverTime = serverTime;
-                    if (listeners.isEmpty()) {
-                        //这里说明并无在聊天界面，则消息为未读
-                        msg.readState = 1;
-                    }
-                    dbHelper.saveMsg(msg);
-                    for (IMessageListener listener : listeners) {
-                        listener.onReceive(msg);
-                    }
+                    MsgManager.getManager().receiveMsg(fingerPrintOfProtocal, userid, dataContent, typeu, serverTime);
                 }
 
                 @Override
@@ -223,48 +137,22 @@ public class IMClientManager {
                 @Override
                 public void messagesLost(ArrayList<Protocal> lostMessages) {
                     Log.d(TAG, "【DEBUG_UI】收到系统的未实时送达事件通知，当前共有" + lostMessages.size() + "个包QoS保证机制结束，判定为【无法实时送达】！");
-//
-//                    if (this.mainGUI != null) {
-//                        this.mainGUI.showIMInfo_brightred("[消息未成功送达]共" + lostMessages.size() + "条!(网络状况不佳或对方id不存在)");
-//                    }
                 }
 
                 @Override
                 public void messagesBeReceived(String theFingerPrint, long serverTime) {
-                    if (theFingerPrint != null) {
-                        dbHelper.updateMsgStateBeReceived(theFingerPrint, serverTime);
-                        List<IMessageListener> listeners = getIMessageListeners();
-                        for (IMessageListener listener : listeners) {
-                            listener.onMsgBeReceived(theFingerPrint);
-                        }
-                        Log.d(TAG, "【DEBUG_UI】收到对方已收到消息事件的通知，fp=" + theFingerPrint);
-//                        if (this.mainGUI != null) {
-//                            this.mainGUI.showIMInfo_blue("[收到对方消息应答]fp=" + theFingerPrint);
-//                        }
-                    }
+                    MsgManager.getManager().messagesBeReceived(theFingerPrint, serverTime);
                 }
             });
+            MsgManager.getManager().initAppNotifier(context);
             init = true;
         }
 
     }
 
-
-    @SuppressLint("NewApi")
-    public void reLogin(Callback callback) {
-        String username = spf.getString("id", null);
-        String token = spf.getString("token", null);
-
-        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(token)) {
-            login(username, token, callback);
-        } else {
-            callback.onBack(-1, "请到登陆页");
-        }
-    }
-
-
     public void release() {
         ClientCoreSDK.getInstance().release();
+        MsgManager.getManager().release();
         resetInitFlag();
     }
 
@@ -279,18 +167,34 @@ public class IMClientManager {
 
 
     public void login(String username, String password, Callback callback) {
+
+        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+            callback.onBack(-1, "跳转到登录页面");
+            return;
+        }
         login(username, password, IP, PORT, callback);
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                EventBus.getDefault().post(new LoginEvent(LoginEvent.TYPE_LOGIN, -2, "登录超时"));
+            }
+        }, 1000 * 10); //10秒超时
     }
 
-
-    public void login(String username, String password, String ip, int port, final Callback callback) {
+    public void closeLocalUDPSocket() {
         LocalUDPSocketProvider.getInstance().closeLocalUDPSocket();
+    }
+
+    @SuppressLint("NewApi")
+    public void login(String username, String password, String ip, int port, final Callback callback) {
+        closeLocalUDPSocket();
         ConfigEntity.serverIP = ip;
         if (port > 65536 || port < 1000) {
             throw new RuntimeException("端口数据异常");
         }
         ConfigEntity.serverUDPPort = port;
-        LocalUDPSocketProvider.getInstance().closeLocalUDPSocket();
+        closeLocalUDPSocket();
 
 
         new LocalUDPDataSender.SendLoginDataAsync(context, username, password) {
@@ -302,17 +206,18 @@ public class IMClientManager {
              */
             @Override
             protected void fireAfterSendLogin(int code) {
-                initLocalRes();//此时已经保存有登陆信息，可以执行初始化数据库操作
+                MsgManager.getManager().initDB(context);//此时已经保存有登陆信息，可以执行初始化数据库操作
                 if (callback != null) {
                     callback.onBack(code, "");
+                }
+                if (code != 0 && timer != null) { //说明消息没有发成功，需要做超时设定
+                    timer.cancel();
                 }
             }
         }.execute();
     }
 
     public void cacheLoginInfo() {
-
-
         String username = getCurrentLoginUsername();
         if (TextUtils.isEmpty(username)) {
             return;
@@ -321,12 +226,14 @@ public class IMClientManager {
         if (TextUtils.isEmpty(token)) {
             return;
         }
-        SharedPreferences.Editor editor = spf.edit();
-        editor.putString("id", username);
-        editor.putString("token", token);
-        editor.commit();
+        CommUtils.saveShareSPFValue(context, "id", username);
+        CommUtils.saveShareSPFValue(context, "token", token);
     }
 
+    public void clearLoginCache() {
+        CommUtils.removeShareSPF(context, "id");
+        CommUtils.removeShareSPF(context, "token");
+    }
 
     public String getCurrentLoginUsername() {
         return ClientCoreSDK.getInstance().getCurrentLoginUsername();
@@ -342,38 +249,19 @@ public class IMClientManager {
 
 
     public int sendLogout() {
-        return LocalUDPDataSender.getInstance(context).sendLoginout();
+        int code = LocalUDPDataSender.getInstance(context).sendLoginout();
+        MsgManager.getManager().closeDB();
+        isLogined = false;
+        return code;
     }
 
 
-    @TargetApi(Build.VERSION_CODES.CUPCAKE)
-    public void sendMsg(final IMessage msg, final Callback callback) {
-        msg.from = getCurrentLoginUsername();
-        msg.serverTime = getCurrentServerTime();
-        dbHelper.saveMsg(msg);
-        new LocalUDPDataSender.SendCommonDataAsync(context, msg)//, true)
-        {
-            @Override
-            protected void onPostExecute(Integer code) {
-                if (code == 0) {
-                    message.state = IMessage.IMessageState.SEND_SUCCESS;
-                } else {
-                    message.state = IMessage.IMessageState.SEND_FAILED;
-                }
-                dbHelper.updateMsgState(message.fingerPrint, getCurrentServerTime(), message.state.ordinal());
-                callback.onBack(code, message); //code=0 成功
-            }
-        }.execute();
+    public void sendMsg(IMessage msg, Callback callback) {
+        MsgManager.getManager().sendMsg(context, msg, callback);
+
     }
 
-
-    public static final int PAGE_SIZE = 20;
-
-    public void loadHistoryMsg(String with, Long lastId) {
-        // HttpUtil.getMsgHistory(with, getCurrentLoginUsername(), lastId == null ? Long.MAX_VALUE : lastId, PAGE_SIZE);
-    }
-
-    public DBHelper getDbHelper() {
-        return dbHelper;
+    public AppNotifier getNotifyer() {
+        return MsgManager.getManager().getNotifyer();
     }
 }
