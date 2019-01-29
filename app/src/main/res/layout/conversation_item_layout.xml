@@ -1,23 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/with"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="测试" />
 
     <TextView
         android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="20dp" />
+        android:layout_below="@+id/with"
+        android:layout_alignLeft="@+id/with"
+        android:text="xxx：xxxx" />
 
     <TextView
         android:id="@+id/unreadcount"
         android:layout_width="20dp"
         android:layout_height="20dp"
-        android:layout_alignTop="@+id/content"
+        android:layout_alignTop="@+id/with"
         android:layout_alignParentRight="true"
         android:layout_marginRight="50dp"
         android:background="@drawable/circle_red"
         android:gravity="center"
         android:textColor="@color/white"
-        android:visibility="gone" />
+        android:visibility="visible" />
 </RelativeLayout>

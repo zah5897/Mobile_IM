@@ -84,6 +84,35 @@ public class ConversationListActivity extends Activity {
                 dialog.setView(input).show();
             }
         });
+
+        findViewById(R.id.new_location).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                final EditText input = new EditText(ConversationListActivity.this);
+                AlertDialog.Builder dialog = new AlertDialog.Builder(ConversationListActivity.this).setTitle("发布位置给对方").setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).setNeutralButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                        String username = input.getText().toString().trim();
+                        if (TextUtils.isEmpty(username)) {
+                            Toast.makeText(getApplicationContext(), "对方不能为空", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Intent toChat = new Intent(getBaseContext(), MapActivity.class);
+                        toChat.putExtra("username", username);
+                        startActivity(toChat);
+                        dialog.dismiss();
+                    }
+                });
+                dialog.setView(input).show();
+            }
+        });
+
         findViewById(R.id.setting).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
